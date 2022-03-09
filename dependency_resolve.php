@@ -1,7 +1,7 @@
 #!/usr/local/bin/php
 <?php declare(strict_types=1);
 
-const DRSLV_VERSION                  = '1.0.0';
+const DRSLV_VERSION                  = '1.0.1';
 
 const DRSLV_SUCCESS                  = 0;
 const DRSLV_ERROR_WRONG_PARAMS       = 1;
@@ -129,7 +129,6 @@ if ($argc < 3) {
         case $arg === '--version':
             version();
             exit($return_code);
-            break;
         default:
             $return_code = DRSLV_ERROR_WRONG_PARAMS;
         case $arg === '-h':
