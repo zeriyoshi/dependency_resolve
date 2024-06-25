@@ -1,7 +1,7 @@
 #!/usr/local/bin/php
 <?php declare(strict_types=1);
 
-const DRSLV_VERSION                  = '1.0.1';
+const DRSLV_VERSION                  = '1.0.3';
 
 const DRSLV_SUCCESS                  = 0;
 const DRSLV_ERROR_WRONG_PARAMS       = 1;
@@ -18,16 +18,16 @@ function usage(array $argv): void {
     $binary = $argv[0] ?? '<unknown>';
 
     echo <<<EOS
-    dependency resolve - distroless packaging support v${version}
+    dependency resolve - distroless packaging support v{$version}
     
-    usage: ${binary} [ldd_binary_path] ...[target_binary_paths]
+    usage: {$binary} [ldd_binary_path] ...[target_binary_paths]
     
     EOS;
 }
 
 function version(): void {
     $version = DRSLV_VERSION;
-    fputs(STDOUT, "${version}\n");
+    fputs(STDOUT, "{$version}\n");
 }
 
 /** 
@@ -40,15 +40,15 @@ function proc_exec(string $binary_path, array $arguments): array {
     $proc = proc_open(
         $args,
         [
-            1 => ['pipe', 'w'], // stdout
-            2 => ['pipe', 'w'], // stderr
+            1 => ['pipe', 'w'], /* stdout */
+            2 => ['pipe', 'w'], /* stderr */
         ],
         $pipes,
         '/',
         null,
     );
     if ($proc === false) {
-        fputs(STDERR, "process execution failed: ${binary_path}\n");
+        fputs(STDERR, "process execution failed: {$binary_path}\n");
         exit(DRSLV_ERROR_PROCESS_FAILED);
     }
     while (proc_get_status($proc)['running']) {
@@ -69,22 +69,22 @@ function proc_exec(string $binary_path, array $arguments): array {
 
 function check_ldd(string $ldd_path): void {
     if (!file_exists($ldd_path)) {
-        fputs(STDERR, "ldd not found: ${ldd_path}\n");
+        fputs(STDERR, "ldd not found: {$ldd_path}\n");
         exit(DRSLV_ERROR_LDD_NOT_FOUND);
     }
     [$stdout, $stderr] = proc_exec($ldd_path, ['--version']);
     if (
-        !str_contains($stdout, 'GLIBC') &&  // glibc
-        !str_contains($stderr, 'musl libc') // musl
+        !str_contains($stdout, 'GLIBC') &&  /* glibc */
+        !str_contains($stderr, 'musl libc') /* musl */
     ) {
-        fputs(STDERR, "ldd executable not supported: ${ldd_path}\n");
+        fputs(STDERR, "ldd executable not supported: {$ldd_path}\n");
         exit(DRSLV_ERROR_LDD_NOT_SUPPORTED);
     }
 }
 
 function check_binary(string $binary_path): void {
     if (!file_exists($binary_path)) {
-        fputs(STDERR, "binary not found: ${binary_path}\n");
+        fputs(STDERR, "binary not found: {$binary_path}\n");
         exit(DRSLV_ERROR_BINARY_NOT_FOUND);
     }
 }
@@ -95,14 +95,14 @@ function dependency_resolve(string $ldd_path, string $binary_path): array {
     $fi = new SplFileInfo($binary_path);
 
     if ($fi->isLink()) {
-        // binary is symlink, resolve recursively.
-        $result = array_unique(array_merge($result, dependency_resolve($ldd_path, $fi->getRealPath())));
+        /* binary is symlink, resolve recursively */
+        $result = array_unique(array_merge($result, dependency_resolve($ldd_path, $fi->getPath() . DIRECTORY_SEPARATOR . $fi->getLinkTarget())));
     } else {
-        // binary is file, resolve dependency from ldd.
+        /* binary is file, resolve dependency from ldd */
         [$stdout, $stderr] = proc_exec($ldd_path, [$binary_path]);
         if (
-            str_contains($stdout, 'not a dynamic executable') || // glibc
-            str_contains($stdout, 'Not a valid dynamic program') // musl
+            str_contains($stdout, 'not a dynamic executable') || /* glibc */
+            str_contains($stdout, 'Not a valid dynamic program') /* musl */
         ) {
             return $result;
         }
@@ -119,7 +119,7 @@ function dependency_resolve(string $ldd_path, string $binary_path): array {
     return $result;
 }
 
-// check arguments
+/* check arguments */
 if ($argc < 3) {
     $arg = $argv[1] ?? '';
     $return_code = DRSLV_SUCCESS;
@@ -138,11 +138,11 @@ if ($argc < 3) {
     }
 }
 
-// check ldd compatibility
+/* check ldd compatibility */
 $ldd_path = $argv[1] ?? '';
 check_ldd($ldd_path);
 
-// check binary paths
+/* check binary paths */
 $binary_paths = [];
 for ($i = 2; $i < $argc; $i++) {
     $binary_path = $argv[$i];
@@ -150,7 +150,7 @@ for ($i = 2; $i < $argc; $i++) {
     $binary_paths[] = $binary_path;
 }
 
-// generate dependencies list
+/* generate dependencies list */
 $list = [];
 foreach ($binary_paths as $binary_path) {
     $list = array_unique(
@@ -158,9 +158,9 @@ foreach ($binary_paths as $binary_path) {
     );
 }
 
-// sort and output lists
+/* sort and output lists */
 sort($list);
 foreach ($list as $entry) {
-    fputs(STDOUT, "${entry}\n");
+    fputs(STDOUT, "{$entry}\n");
 }
 exit(DRSLV_SUCCESS);
